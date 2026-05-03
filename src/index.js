@@ -5,10 +5,25 @@ import dotenv from "dotenv"
 dotenv.config();
 import express from "express";
 import connectDB from "./db/index.js";
+import { error } from "node:console";
+import { app } from "./app.js";
 
 
 
 
-connectDB();
+connectDB()
+.then(()=>{
+    app.on("error",(err)=>{
+        console.log("Error : ",err)
+        throw err
+    })
+    
+    app.listen(process.env.PORTt || 8000 ,()=>{
+        console.log(`Server is listening on port ${process.env.PORT}`)
+    })
+})
+.catch((error)=>{
+    console.log("Mongo DB error :",error)
+})
 
 
