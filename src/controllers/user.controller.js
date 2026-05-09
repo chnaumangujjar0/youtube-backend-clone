@@ -19,7 +19,7 @@ const generateAccessAndRefreshtoken = async (userId) => {
         throw new ApiError(401,"Something went Wrong while generating tokens")
     }
 }
-
+// -------------Controllers---------------------------
 const registerUser = asyncHandler(async (req, res) => {
     // res.status(200).json({
     //     message : "ok"
@@ -120,7 +120,7 @@ const loginUser = asyncHandler(async (req,res) => {
   const {accessToken,refreshToken} =await generateAccessAndRefreshtoken(existedUser._id)
   
   const loggedInUser = await User.findById(existedUser._Id).select("-password -refreshToken")
-  console.log(loggedInUser)
+  
   const options = {
     httpOnly: true,
     secure: true
@@ -174,7 +174,7 @@ const logoutUser = asyncHandler(async (req,res)=>{
 const refreshAccessToken = asyncHandler(async (req,res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
-    if(incomingRefreshToken){
+    if(!incomingRefreshToken){
         throw new ApiError(401,"Un authorized access")
     }
 
