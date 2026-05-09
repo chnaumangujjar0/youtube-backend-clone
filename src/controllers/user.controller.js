@@ -4,6 +4,7 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import { response } from "express";
 // we create a separate method for generating tokens
 const generateAccessAndRefreshtoken = async (userId) => {
     try {
@@ -55,7 +56,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(409,"Username or email already exists");
     }
 
-   const avatarLocalPath = req.files?.avatar[0]?.path;
+   const coverImageLocalPath = req.files?.avatar[0]?.path;
    // const coverImageLocalPath = req.files?.coverImage[0]?.path;  it is an advanced syntax
    let coverImageLocalPath;
    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
@@ -218,4 +219,143 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
     }
 })
 
-export  {registerUser, loginUser, logoutUser, refreshAccessToken};
+const changeCurrentPassword = asyncHandler(async (req,res) => {
+    const {oldPassword, newPassword} = req.body;
+
+   const user = await User.findById(req.user._id)
+
+   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+   if(!isPasswordCorrect){
+    throw new ApiError(400,"Incorrect password")
+   }
+
+   user.password = oldPassword;
+   await user.save({validateBeforeSave: false})
+
+   return res
+   .status(200)
+   .json(
+    new ApiResponse(
+        200,
+        {},
+        "password changed successfully"
+    )
+   )
+})
+
+const currentUser = asyncHandler(async (req,res) => {
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            req.user,
+            "User fetched Successfully"
+        )
+    )
+})
+
+const updateUserDetails = asyncHandler(async (req,res) => {
+    const {fullName, email, } = req.body;
+
+    if ([fullName, email].some((field)=> field?.trim() === "")) {
+        throw new ApiError(400,"New name required")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                email,
+                fullName
+            }
+        },
+        {returnDocument: "after"}
+    ).select("-password -refreshToken")
+
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user,
+            "Details updated successfully"
+        )
+    )
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) =>{
+
+    const avatarLocalPath = req.file.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+        throw new ApiError(400,"Error while uploading avatar file to cloudinary")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {avatar: avatar.url}
+        }
+    ).select("-password -refreshToken")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user,
+            "Avatar updated Successfully!"
+        )
+    )
+
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res) =>{
+    const coverImageLocalPath = req.file.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"Cover Image file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!coverImage.url){
+        throw new ApiError(400,"Error while uploading coverImage file to cloudinary")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {coverImage: coverImage.url}
+        }
+    ).select("-password -refreshToken")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user,
+            "Avatar updated Successfully!"
+        )
+    )
+}
+)
+
+export  {
+    registerUser,
+    loginUser, 
+    logoutUser, 
+    refreshAccessToken, 
+    changeCurrentPassword, 
+    currentUser, 
+    updateUserDetails,
+    updateUserAvatar,
+    updateUserCoverImage
+};
