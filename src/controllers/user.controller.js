@@ -20,6 +20,26 @@ const generateAccessAndRefreshtoken = async (userId) => {
         throw new ApiError(401,"Something went Wrong while generating tokens")
     }
 }
+// Function for deleting old image url from cloudinary
+const deleteOldImageFromCloudinary = async (url = "") => {
+
+    if(url == ""){
+        throw new ApiError(401,"URL is not corect! ")
+    }
+
+   // Get filename after last '/'
+    let part = url.split('/').pop();
+
+    // Remove file extension
+    part = part.substring(0, part.lastIndexOf('.'));
+
+    const result = await cloudinary.uploader.destroy(part);
+    if(result === "ok"){
+        console.log("Image deleted successfully!")
+    } else {
+        console.log("Image not found!")
+    }
+}
 // -------------Controllers---------------------------
 const registerUser = asyncHandler(async (req, res) => {
     // res.status(200).json({
@@ -290,13 +310,14 @@ const updateUserAvatar = asyncHandler(async (req, res) =>{
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar file is missing")
     }
+    const oldAvatarUrl = req.user.avatar;  // URL of old Avatar
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-
+    
     if(!avatar.url){
         throw new ApiError(400,"Error while uploading avatar file to cloudinary")
     }
-
+    deleteOldImageFromCloudinary(oldAvatarUrl); // call the delete function
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -322,13 +343,14 @@ const updateUserCoverImage = asyncHandler(async (req, res) =>{
     if(!coverImageLocalPath){
         throw new ApiError(400,"Cover Image file is missing")
     }
+    const oldCoverImageUrl = req.user.coverImage;
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if(!coverImage.url){
         throw new ApiError(400,"Error while uploading coverImage file to cloudinary")
     }
-
+    deleteOldImageFromCloudinary(oldCoverImageUrl);
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -348,6 +370,78 @@ const updateUserCoverImage = asyncHandler(async (req, res) =>{
 }
 )
 
+const getUserChannelProfile = asyncHandler(async (req,res) => {
+    const {username} = req.params;
+
+    if(!username.trim()){
+        throw new ApiError(401," This username does not exist")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match : {
+                username: username
+            }
+        },
+        {
+            $lookup:{
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedto"
+            }
+        },
+        {
+            $addFields: {
+                subscribesCount: {
+                    $size: "$subscribers"
+                },
+                channelSubscribedToCount: {
+                    $size: "$subscribedto"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                username: 1,
+                fullName: 1,
+                subscribesCount: 1,
+                channelSubscribedToCount: 1,
+                avatar: 1,
+                coverImage: 1,
+            }
+        }
+    ])
+
+    if(!channel?.length){
+        throw new ApiError(400,"Erroe does not exist!")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            channel[0],
+            "User channel fetched Successfully!"
+        )
+    )
+})
 export  {
     registerUser,
     loginUser, 
