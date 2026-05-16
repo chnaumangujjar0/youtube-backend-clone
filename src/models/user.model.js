@@ -52,16 +52,19 @@ const userSchema = new Schema(
     }
 )
 
-userSchema.pre("save",async function (next) {
-    if(!this.isModified()) return next;
-
+userSchema.pre("save",async function () {
+    console.log("Pre-save fired!");
+    console.log("Is password modified?", this.isModified("password"));
+    if(!this.isModified("password")) return ;
+    console.log("Hashing password..."); 
     this.password = await bcrypt.hash(this.password,10)
-    next;
+    
 })
 
 userSchema.methods.isPasswordCorrect = async function (password) {
+    
    return await bcrypt.compare(password,this.password)
-}
+} 
 
 userSchema.methods.generateAccessToken = async function () {
     return await jwt.sign(

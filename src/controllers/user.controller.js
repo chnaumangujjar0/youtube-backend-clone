@@ -77,16 +77,22 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(409,"Username or email already exists");
     }
 
-   const coverImageLocalPath = req.files?.avatar[0]?.path;
-   // const coverImageLocalPath = req.files?.coverImage[0]?.path;  it is an advanced syntax
+   //const avatarLocalPath = req.files?.avatar?.[0]?.path;  // simple syntax
+   let avatarLocalPath;
+   if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0){ //it is an advanced syntax
+    avatarLocalPath = req.files?.avatar[0]?.path;
+   }
+   console.log(avatarLocalPath)
+   // const coverImageLocalPath = req.files?.coverImage[0]?.path;  // simple syntax
    let coverImageLocalPath;
-   if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+   if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){ //it is an advanced syntax
     coverImageLocalPath = req.files?.coverImage[0]?.path;
    }
    if(!avatarLocalPath){
     throw new ApiError(400,"Avatar file is required");
    }
-
+   
+   
    const avatar = await uploadOnCloudinary(avatarLocalPath);
    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
@@ -109,7 +115,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(500,"Something went wrong")
     }
 
-    return res.status(201).json(
+    return res.status(200).json(
         new ApiResponse(200, createdUser, "Registered user Successfully!")
     )
 } ) 
@@ -130,22 +136,26 @@ const loginUser = asyncHandler(async (req,res) => {
     }
 
    const existedUser = await User.findOne({ $or:[{email},{username}]})
+   
    if(!existedUser){
         throw new ApiError(404,"Username or email does not exist!")
    }
+   
   const isPasswordvalid = await existedUser.isPasswordCorrect(password);
+    console.log("📥 Password from request:", password);
+    console.log("🗄️ Password in DB:", existedUser.password);
+    console.log("✅ Is valid:", isPasswordvalid);
   if(!isPasswordvalid){
         throw new ApiError(401,"Incorrect password!")
   }
   
-  
   const {accessToken,refreshToken} =await generateAccessAndRefreshtoken(existedUser._id)
   
-  const loggedInUser = await User.findById(existedUser._Id).select("-password -refreshToken")
+  const loggedInUser = await User.findById(existedUser._id).select("-password -refreshToken")
   
   const options = {
     httpOnly: true,
-    secure: true
+    secure: process.env.NODE_ENV === "production"
   }
   
 
@@ -156,7 +166,7 @@ const loginUser = asyncHandler(async (req,res) => {
     new ApiResponse(
     200,
     {
-    user: existedUser,
+    user: loggedInUser,
     accessToken,
     refreshToken
   },
@@ -169,8 +179,8 @@ const logoutUser = asyncHandler(async (req,res)=>{
  await User.findByIdAndUpdate(
     req.user._id,
     {
-        $set: {
-            refreshToken: undefined
+        $unset: {
+            refreshToken: 1
         }
     },
     { returnDocument: "after" }
@@ -242,16 +252,19 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
 
 const changeCurrentPassword = asyncHandler(async (req,res) => {
     const {oldPassword, newPassword} = req.body;
-
+    if (!oldPassword || !newPassword) {
+        throw new ApiError(400, "Both passwords are required")
+    }
    const user = await User.findById(req.user._id)
-
+   console.log("old password",oldPassword)
+   console.log("new password",newPassword)
    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
-
+   console.log(isPasswordCorrect)
    if(!isPasswordCorrect){
     throw new ApiError(400,"Incorrect password")
    }
 
-   user.password = oldPassword;
+   user.password = newPassword;
    await user.save({validateBeforeSave: false})
 
    return res
@@ -448,7 +461,7 @@ const getWatchHistory = asyncHandler(async (req,res) => {
     const user = await User.aggregate([
         {
             $match: {
-                _id: new mongoose.Types.ObjectId(req,user,_id)
+                _id: new mongoose.Types.ObjectId(req.user._id)
             }
         },
         {
@@ -457,14 +470,14 @@ const getWatchHistory = asyncHandler(async (req,res) => {
                 localField: "watchHistory",
                 foreignField: "_id",
                 as: "watchHistory",
-                pipline: [
+                pipeline: [
                     {
                         $lookup: {
                             from: "users", // feeling mistake
                             localField: "owner",
                             foreignField: "_id",
                             as: "owner",
-                            pipline: [
+                            pipeline: [
                                 {
                                     $project: {
                                         fullName: 1,
