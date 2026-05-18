@@ -2,6 +2,7 @@ import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/apiError.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import cloudinary from "cloudinary"
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken"
 import { response } from "express";
@@ -35,7 +36,7 @@ const deleteOldImageFromCloudinary = async (url = "") => {
     part = part.substring(0, part.lastIndexOf('.'));
 
     const result = await cloudinary.uploader.destroy(part);
-    if(result === "ok"){
+    if(result.result === "ok"){
         console.log("Image deleted successfully!")
     } else {
         console.log("Image not found!")
