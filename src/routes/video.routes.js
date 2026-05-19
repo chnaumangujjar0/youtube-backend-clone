@@ -3,6 +3,7 @@ import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {
+    getVideoById,
     publishAVideo
 } from "../controllers/video.controller.js"
 
@@ -19,5 +20,7 @@ router.route("/upload-video").post(upload.fields([
         maxCount: 1
     }
 ]),verifyJwt, publishAVideo)
+
+router.route("/:videoId").get(verifyJwt, getVideoById)
 
 export default router;

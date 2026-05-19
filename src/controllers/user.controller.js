@@ -143,9 +143,7 @@ const loginUser = asyncHandler(async (req,res) => {
    }
    
   const isPasswordvalid = await existedUser.isPasswordCorrect(password);
-    console.log("📥 Password from request:", password);
-    console.log("🗄️ Password in DB:", existedUser.password);
-    console.log("✅ Is valid:", isPasswordvalid);
+    
   if(!isPasswordvalid){
         throw new ApiError(401,"Incorrect password!")
   }
