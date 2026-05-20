@@ -91,6 +91,25 @@ const updateVideo = asyncHandler(async (req,res) => {
 
    const video = await Video.findById(videoId)
 
+   const avatarLocalPath = req.file.path
+   
+       if(!avatarLocalPath){
+           throw new ApiError(400,"Avatar file is missing")
+       }
+       const oldAvatarUrl = req.user.avatar;  // URL of old Avatar
+   
+       const avatar = await uploadOnCloudinary(avatarLocalPath)
+       
+       if(!avatar.url){
+           throw new ApiError(400,"Error while uploading avatar file to cloudinary")
+       }
+       deleteOldImageFromCloudinary(oldAvatarUrl); // call the delete function
+       const user = await User.findByIdAndUpdate(
+           req.user._id,
+           {
+               $set: {avatar: avatar.url}
+           }
+       ).select("-password -refreshToken")
    
    
 })
