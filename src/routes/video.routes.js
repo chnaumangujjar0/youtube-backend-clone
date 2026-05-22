@@ -4,7 +4,8 @@ import { upload } from "../middlewares/multer.middleware.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {
     getVideoById,
-    publishAVideo
+    publishAVideo,
+    updateVideoDetails
 } from "../controllers/video.controller.js"
 
 const router = Router();
@@ -12,7 +13,7 @@ const router = Router();
 
 router.route("/upload-video").post(upload.fields([
     {
-        name: "video",
+        name: "videoFile",
         maxCount: 1
     },
     {
@@ -22,5 +23,6 @@ router.route("/upload-video").post(upload.fields([
 ]),verifyJwt, publishAVideo)
 
 router.route("/:videoId").get(verifyJwt, getVideoById)
+router.route("/:videoId").patch( verifyJwt, upload.single("thumbnail"),updateVideoDetails)
 
 export default router;
