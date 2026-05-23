@@ -4,11 +4,13 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {Video} from "../models/video.model.js"
 import cloudinary from "cloudinary"
-const deleteOldImageFromCloudinary = async (url = "") => {
+import mongoose from "mongoose";
+const deleteFromCloudinary = async (url = "") => {
 
     if(url == ""){
         throw new ApiError(401,"URL is not corect! ")
     }
+    const resource_type = url.includes("/video/") ? "video" : "image"
 
    // Get filename after last '/'
     let part = url.split('/').pop();
@@ -16,11 +18,11 @@ const deleteOldImageFromCloudinary = async (url = "") => {
     // Remove file extension
     part = part.substring(0, part.lastIndexOf('.'));
 
-    const result = await cloudinary.uploader.destroy(part);
+    const result = await cloudinary.uploader.destroy(part,{resource_type});
     if(result.result === "ok"){
-        console.log("Image deleted successfully!")
+        console.log("file deleted successfully!", resource_type)
     } else {
-        console.log("Image not found!")
+        console.log("file not found!",resource_type)
     }
 }
 
@@ -115,7 +117,7 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         }
 
         
-        await deleteOldImageFromCloudinary(video.thumbnail)
+        await deleteFromCloudinary(video.thumbnail)
     }
 
     
@@ -136,4 +138,59 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, updatedVideo, "Details updated successfully!"))
 })
 
-export {publishAVideo, getVideoById, updateVideoDetails}
+const deleteVideo = asyncHandler(async (req,res) => {
+    const {videoId} = req.params
+
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new ApiError(400, "Video does not exist!")
+    }
+
+    if (video.owner.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not authorized to update this video")
+    }
+    
+    const deleted = await Video.deleteOne({ _id: new mongoose.Types.ObjectId(videoId)})
+
+    
+    if(!deleted){
+        throw new ApiError(400, "video not deleted");  
+    }
+    deleteFromCloudinary(video.videoFile)
+    deleteFromCloudinary(video.thumbnail)
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {},
+            "Video deleted successfully"
+        )
+    )
+})
+
+const togglePublishStatus = asyncHandler(async (req,res) => {
+    const {videoId} = req.params
+
+    const video = await Video.findById(videoId)
+    if(!video){
+        throw new ApiError(400, "Video does not exist!")
+    }
+    const updatedVideo = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                isPublished: !video.isPublished
+            }
+        },
+        { returnDocument: "after" }
+    )
+    
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updatedVideo,
+            "publish toggled successfully!"
+        )
+    )
+})
+export {publishAVideo, getVideoById, updateVideoDetails, deleteVideo, togglePublishStatus}
