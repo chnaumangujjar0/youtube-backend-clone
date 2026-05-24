@@ -67,6 +67,10 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+    // Stage 1 — FILTER: search by query or userId
+    // Stage 2 — JOIN: populate owner details from users collection
+    // Stage 3 — SORT: use sortBy field + sortType (asc/desc)
+    // Stage 4 — PAGINATE: skip + limit
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
