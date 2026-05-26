@@ -67,10 +67,37 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
-    // Stage 1 — FILTER: search by query or userId
-    // Stage 2 — JOIN: populate owner details from users collection
-    // Stage 3 — SORT: use sortBy field + sortType (asc/desc)
-    // Stage 4 — PAGINATE: skip + limit
+
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    const videos = await Video.aggregate([  // ✅ await added
+        {
+            $match: {
+                ...(userId && { owner: new mongoose.Types.ObjectId(userId) }),
+                ...(query && { title: { $regex: query, $options: "i" } })
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails"
+            }
+        },
+        {
+            $sort: {
+                [sortBy || "createdAt"]: sortType === "asc" ? 1 : -1
+            }
+        },
+        { $skip: (pageNum - 1) * limitNum },
+        { $limit: limitNum }
+    ])
+
+    return res.status(200).json(
+        new ApiResponse(200, videos, "Videos fetched successfully!")
+    )
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
@@ -197,4 +224,4 @@ const togglePublishStatus = asyncHandler(async (req,res) => {
         )
     )
 })
-export {publishAVideo, getVideoById, updateVideoDetails, deleteVideo, togglePublishStatus}
+export {publishAVideo, getVideoById, updateVideoDetails, deleteVideo, togglePublishStatus, getAllVideos}
