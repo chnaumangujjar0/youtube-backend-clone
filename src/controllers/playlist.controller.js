@@ -172,7 +172,9 @@ const deletePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Unauthorized");
     }
 
-    await playlist.deleteOne();
+    await Playlist.deleteOne({
+        _id: new mongoose.Types.ObjectId(playlistId)
+    })
 
     return res.status(200).json(
         new ApiResponse(
