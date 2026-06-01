@@ -4,6 +4,42 @@ import { ApiError } from "../utils/apiError.js";
 import { Comment } from "../models/comment.model.js";
 import {ApiResponse} from "../utils/apiResponse.js"
 
+const getVideoComments = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    const { page = 1, limit = 10 } = req.query
+
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    const comments = await Comment.aggregate([
+        {
+            $match: {
+                video: new mongoose.Types.ObjectId(videoId)
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails"
+            }
+        },
+        {
+            $unwind: "$ownerDetails"
+        },
+        {
+            $sort: { createdAt: -1 }
+        },
+        { $skip: (pageNum - 1) * limitNum },
+        { $limit: limitNum }
+    ])
+
+    return res.status(200).json(
+        new ApiResponse(200, comments, "Comments fetched successfully!")
+    )
+})
+
 const addComment = asyncHandler(async (req, res) => {
     const {videoId} = req.params
     const {content} = req.body
@@ -109,5 +145,6 @@ const deleteComment = asyncHandler(async (req, res) => {
 export {
     addComment,
     updateComment,
-    deleteComment
+    deleteComment,
+    getVideoComments
 }
