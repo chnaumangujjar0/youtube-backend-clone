@@ -67,10 +67,10 @@ const getUserTweets = asyncHandler(async (req, res) => {
 })
 
 const updateTweet = asyncHandler(async (req, res) => {
-    const {tweettId} = req.params;
+    const {tweetId} = req.params;
         const {content} = req.body
     
-        const existingTweet = await Tweet.findById(commentId)
+        const existingTweet = await Tweet.findById(tweetId)
     
         if(!existingTweet){
             throw new ApiError(400,"tweet does not exist for edit")
@@ -95,8 +95,8 @@ const updateTweet = asyncHandler(async (req, res) => {
             }
         )
     
-        if(!updateTweet){
-            throw new ApiError(400,"comment is not updated")
+        if(!updatedTweet){
+            throw new ApiError(400,updateTweet,"tweet is not updated")
         }
     
         return res
@@ -104,7 +104,7 @@ const updateTweet = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200,
-                updateTweet,
+                updatedTweet,
                 "tweet updated successfully!"
             )
         )
@@ -113,7 +113,7 @@ const updateTweet = asyncHandler(async (req, res) => {
 const deleteTweet = asyncHandler(async (req, res) => {
     const {tweetId} = req.params
     
-        const existingTweet = await Tweet.findById(commentId)
+        const existingTweet = await Tweet.findById(tweetId)
     
         if(!tweetId){
             throw new ApiError(400," tweet does not exist")
