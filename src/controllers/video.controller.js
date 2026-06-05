@@ -71,7 +71,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const pageNum = parseInt(page)
     const limitNum = parseInt(limit)
 
-    const videos = await Video.aggregate([  // ✅ await added
+    const videos = await Video.aggregate([  
         {
             $match: {
                 ...(userId && { owner: new mongoose.Types.ObjectId(userId) }),
@@ -83,8 +83,21 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "owner",
                 foreignField: "_id",
-                as: "ownerDetails"
+                as: "ownerDetails",
+                pipeline: [
+                    {
+                        $project: {
+                            _id: 0,
+                            fullName: 1,
+                            username: 1,
+                            avatar: 1,
+                        }
+                    }
+                ]
             }
+        },
+        {
+            $unwind: "$ownerDetails"
         },
         {
             $sort: {
