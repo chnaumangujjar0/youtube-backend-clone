@@ -75,7 +75,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         {
             $match: {
                 ...(userId && { owner: new mongoose.Types.ObjectId(userId) }),
-                ...(query && { title: { $regex: query, $options: "i" } })
+                ...(query && { title: { $regex: query, $options: "i" } }) // it works like "like" statement of SQL
             }
         },
         {

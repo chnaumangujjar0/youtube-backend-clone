@@ -56,4 +56,23 @@ const getChannelStats = asyncHandler(async (req, res) => {
     );
 });
 
-export {getChannelStats}
+const getChannelVideos = asyncHandler(async (req, res) => {
+    const getChannelVideos = await Video.find({
+        owner: req.user._id
+    })
+
+    if(!getChannelStats){
+        throw new ApiError(400,"channel does not upload any video")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            getChannelVideos,
+            "channel videos fetched successfully"
+        )
+    )
+})
+export {getChannelStats, getChannelVideos}
